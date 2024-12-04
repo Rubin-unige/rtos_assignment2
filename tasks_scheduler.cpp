@@ -9,6 +9,11 @@
 #include <math.h>
 #include <sys/types.h>
 #include <sys/types.h>
+#include <fcntl.h>
+#include <unistd.h>
+#include <errno.h>
+
+#define DRIVER_PATH "/dev/special_driver"
 
 //code of periodic tasks
 void task1_code( );
@@ -32,7 +37,6 @@ void *task4( void *);
 pthread_mutex_t mutex_task_4 = PTHREAD_MUTEX_INITIALIZER;
 pthread_cond_t cond_task_4 = PTHREAD_COND_INITIALIZER;
 
-
 #define INNERLOOP 100
 #define OUTERLOOP 100
 
@@ -48,8 +52,7 @@ pthread_t thread_id[NTASKS];
 struct sched_param parameters[NTASKS];
 int missed_deadlines[NTASKS];
 
-int
-main()
+int main()
 {
   	// set task periods in nanoseconds
 	//the first task has period 100 millisecond
@@ -215,172 +218,232 @@ main()
   	exit(0);
 }
 
-// application specific task_1 code
-void task1_code()
-{
-	//print the id of the current task
-  	printf(" 1[ "); fflush(stdout);
+void task1_code() {
+    int fd;
 
-	//this double loop with random computation is only required to waste time
-	int i,j;
-	double uno;
-  	for (i = 0; i < OUTERLOOP; i++)
-    	{
-      		for (j = 0; j < INNERLOOP; j++)
-		{
-			uno = rand()*rand()%10;
-    		}
-  	}
-  
-  	//print the id of the current task
-  	printf(" ]1 "); fflush(stdout);
+    fd = open(DRIVER_PATH, O_WRONLY);
+    if (fd < 0) {
+        perror("Error opening driver");
+        return;
+    }
+
+    char message[4] = "[1";
+    write(fd, message, 3);  // Write '[1'
+    close(fd);
+
+    int i, j;
+    double uno;
+    for (i = 0; i < OUTERLOOP; i++) {
+        for (j = 0; j < INNERLOOP; j++) {
+            uno = rand() * rand() % 10;
+        }
+    }
+
+    fd = open(DRIVER_PATH, O_WRONLY);
+    if (fd < 0) {
+        perror("Error opening driver");
+        return;
+    }
+
+    char end_message[4] = "]1";
+    write(fd, end_message, 3);  // Write ']1'
+
+    close(fd);
 }
 
-//thread code for task_1 (used only for temporization)
-void *task1( void *ptr)
-{
-	// set thread affinity, that is the processor on which threads shall run
-	cpu_set_t cset;
-	CPU_ZERO (&cset);
-	CPU_SET(0, &cset);
-	pthread_setaffinity_np(pthread_self(), sizeof(cpu_set_t), &cset);
+void *task1(void *ptr) {
+    cpu_set_t cset;
+    CPU_ZERO(&cset);
+    CPU_SET(0, &cset);
+    pthread_setaffinity_np(pthread_self(), sizeof(cpu_set_t), &cset);
 
-   	//execute the task one hundred times... it should be an infinite loop (too dangerous)
-  	int i=0;
-  	for (i=0; i < 100; i++)
-    	{
-      		// execute application specific code
-		task1_code();
+    int i = 0;
+    for (i = 0; i < 100; i++) {
+        // Execute application-specific code (open, write, close)
+        task1_code();
 
-		// it would be nice to check if we missed a deadline here... why don't
-		// you try by yourself?
-
-		// sleep until the end of the current period (which is also the start of the
-		// new one
-		clock_nanosleep(CLOCK_REALTIME, TIMER_ABSTIME, &next_arrival_time[0], NULL);
-
-		// the thread is ready and can compute the end of the current period for
-		// the next iteration
- 		
-		long int next_arrival_nanoseconds = next_arrival_time[0].tv_nsec + periods[0];
-		next_arrival_time[0].tv_nsec= next_arrival_nanoseconds%1000000000;
-		next_arrival_time[0].tv_sec= next_arrival_time[0].tv_sec + next_arrival_nanoseconds/1000000000;
-    	}
-}
-
-void task2_code()
-{
-	//print the id of the current task
-  	printf(" 2[ "); fflush(stdout);
-	int i,j;
-	double uno;
-  	for (i = 0; i < OUTERLOOP; i++)
-    	{
-      		for (j = 0; j < INNERLOOP; j++)
-		{
-			uno = rand()*rand()%10;
-		}
-    	}
-
-	// when the random variable uno=1, then aperiodic task 4 must be executed
-  	if (uno == 1)
-    	{
-      		printf("[4]");fflush(stdout);
-
-	// See below why mutexes have been commented
-    // pthread_mutex_lock(&mutex_task_4);
-      	pthread_cond_signal(&cond_task_4);
-    //  pthread_mutex_unlock(&mutex_task_4);
-    	}
-	//print the id of the current task
-  	printf(" ]2 "); fflush(stdout);
-}
-
-
-void *task2( void *ptr )
-{
-	// set thread affinity, that is the processor on which threads shall run
-	cpu_set_t cset;
-	CPU_ZERO (&cset);
-	CPU_SET(0, &cset);
-	pthread_setaffinity_np(pthread_self(), sizeof(cpu_set_t), &cset);
-
-	int i=0;
-  	for (i=0; i < 100; i++)
-    	{
-      		task2_code();
-
-		clock_nanosleep(CLOCK_REALTIME, TIMER_ABSTIME, &next_arrival_time[1], NULL);
-		long int next_arrival_nanoseconds = next_arrival_time[1].tv_nsec + periods[1];
-		next_arrival_time[1].tv_nsec= next_arrival_nanoseconds%1000000000;
-		next_arrival_time[1].tv_sec= next_arrival_time[1].tv_sec + next_arrival_nanoseconds/1000000000;
-    	}
-}
-
-void task3_code()
-{
-	//print the id of the current task
-  	printf(" 3[ "); fflush(stdout);
-	int i,j;
-	double uno;
-  	for (i = 0; i < OUTERLOOP; i++)
-    	{
-      		for (j = 0; j < INNERLOOP; j++);		
-			double uno = rand()*rand()%10;
-    	}
-	//print the id of the current task
-  	printf(" ]3 "); fflush(stdout);
-}
-
-void *task3( void *ptr)
-{
-	// set thread affinity, that is the processor on which threads shall run
-	cpu_set_t cset;
-	CPU_ZERO (&cset);
-	CPU_SET(0, &cset);
-	pthread_setaffinity_np(pthread_self(), sizeof(cpu_set_t), &cset);
-
-	int i=0;
-  	for (i=0; i < 100; i++)
-    	{
-      		task3_code();
-
-		clock_nanosleep(CLOCK_REALTIME, TIMER_ABSTIME, &next_arrival_time[2], NULL);
-		long int next_arrival_nanoseconds = next_arrival_time[2].tv_nsec + periods[2];
-		next_arrival_time[2].tv_nsec= next_arrival_nanoseconds%1000000000;
-		next_arrival_time[2].tv_sec= next_arrival_time[2].tv_sec + next_arrival_nanoseconds/1000000000;
+        // Sleep until the end of the current period (start of next period)
+        clock_nanosleep(CLOCK_REALTIME, TIMER_ABSTIME, &next_arrival_time[0], NULL);
+        
+        // Update the next arrival time for the next iteration
+        long int next_arrival_nanoseconds = next_arrival_time[0].tv_nsec + periods[0];
+        next_arrival_time[0].tv_nsec = next_arrival_nanoseconds % 1000000000;
+        next_arrival_time[0].tv_sec = next_arrival_time[0].tv_sec + next_arrival_nanoseconds / 1000000000;
     }
 }
 
-void task4_code()
-{
-  	printf(" 4[ "); fflush(stdout);
-	for (int i = 0; i < OUTERLOOP; i++)
-    	{
-      		for (int j = 0; j < INNERLOOP; j++)
-			double uno = rand()*rand();
-    	}
-  	printf(" ]4 "); fflush(stdout);
-  	fflush(stdout);
+void task2_code() {
+    int fd;
+
+    fd = open(DRIVER_PATH, O_WRONLY);
+    if (fd < 0) {
+        perror("Error opening driver");
+        return;
+    }
+
+    char message[4] = "[2";
+    if (write(fd, message, 3) < 0) {
+        perror("Error writing to driver");
+        close(fd);
+        return;
+    }
+    close(fd);
+
+    int i, j;
+    double uno;
+    for (i = 0; i < OUTERLOOP; i++) {
+        for (j = 0; j < INNERLOOP; j++) {
+            uno = rand() * rand() % 10;
+        }
+    }
+    if (uno == 1) {
+        printf("[4]"); fflush(stdout);
+
+        // Signal Task 4 (J4) to execute
+        pthread_mutex_lock(&mutex_task_4);
+        pthread_cond_signal(&cond_task_4);  // Wake up Task 4
+        pthread_mutex_unlock(&mutex_task_4);
+    }
+
+    fd = open(DRIVER_PATH, O_WRONLY);
+    if (fd < 0) {
+        perror("Error opening driver");
+        return;
+    }
+
+    char end_message[4] = "]2";
+    if (write(fd, end_message, 3) < 0) {
+        perror("Error writing to driver");
+        close(fd);
+        return;
+    }
+    close(fd);
 }
 
-void *task4( void *)
-{
-	// set thread affinity, that is the processor on which threads shall run
-	cpu_set_t cset;
-	CPU_ZERO (&cset);
-	CPU_SET(0, &cset);
-	pthread_setaffinity_np(pthread_self(), sizeof(cpu_set_t), &cset);
+void *task2(void *ptr) {
+    cpu_set_t cset;
+    CPU_ZERO(&cset);
+    CPU_SET(0, &cset);  // Bind to CPU core 0
+    pthread_setaffinity_np(pthread_self(), sizeof(cpu_set_t), &cset);
 
-	//add an infinite loop 
-	while (1)
-    	{
-		// wait for the proper condition to be signalled
-		// See below why mutexes have been commented
-//		pthread_mutex_lock(&mutex_task_4);
-		pthread_cond_wait(&cond_task_4, &mutex_task_4);
-//		pthread_mutex_unlock(&mutex_task_4);
-		// execute the task code
- 		task4_code();
-	}
+    int i;
+    for (i = 0; i < 100; i++) {
+        // Execute Task 2 specific code (open, write, close)
+        task2_code();
+
+        // Step (ix) - Sleep until the end of the current period (start of next period)
+        clock_nanosleep(CLOCK_REALTIME, TIMER_ABSTIME, &next_arrival_time[1], NULL);
+
+        // Step (x) - Update the next arrival time for the next iteration
+        long int next_arrival_nanoseconds = next_arrival_time[1].tv_nsec + periods[1];
+        next_arrival_time[1].tv_nsec = next_arrival_nanoseconds % 1000000000;
+        next_arrival_time[1].tv_sec = next_arrival_time[1].tv_sec + next_arrival_nanoseconds / 1000000000;
+    }
+
+    return NULL; // Explicit return for thread function
+}
+
+void task3_code() {
+    int fd;
+
+    fd = open(DRIVER_PATH, O_WRONLY);
+    if (fd < 0) {
+        perror("Error opening driver");
+        return;
+    }
+
+    char message[4] = "[3";
+    write(fd, message, 3);  // Write '[3'
+    close(fd);
+
+    int i, j;
+    double uno;
+    for (i = 0; i < OUTERLOOP; i++) {
+        for (j = 0; j < INNERLOOP; j++) {
+            uno = rand() * rand() % 10;
+        }
+    }
+
+    fd = open(DRIVER_PATH, O_WRONLY);
+    if (fd < 0) {
+        perror("Error opening driver");
+        return;
+    }
+
+    char end_message[4] = "]3";
+    write(fd, end_message, 3);  // Write ']3'
+
+    close(fd);
+}
+
+void *task3(void *ptr) {
+    cpu_set_t cset;
+    CPU_ZERO(&cset);
+    CPU_SET(0, &cset);
+    pthread_setaffinity_np(pthread_self(), sizeof(cpu_set_t), &cset);
+
+    int i = 0;
+    for (i = 0; i < 100; i++) {
+        // Execute application-specific code (open, write, close)
+        task3_code();
+
+        // Sleep until the end of the current period (start of next period)
+        clock_nanosleep(CLOCK_REALTIME, TIMER_ABSTIME, &next_arrival_time[2], NULL);
+        
+        // Update the next arrival time for the next iteration
+        long int next_arrival_nanoseconds = next_arrival_time[2].tv_nsec + periods[2];
+        next_arrival_time[2].tv_nsec = next_arrival_nanoseconds % 1000000000;
+        next_arrival_time[2].tv_sec = next_arrival_time[2].tv_sec + next_arrival_nanoseconds / 1000000000;
+    }
+}
+void task4_code() {
+    int fd;
+
+    fd = open(DRIVER_PATH, O_WRONLY);
+    if (fd < 0) {
+        perror("Error opening driver");
+        return;
+    }
+
+    char message[4] = "[4";
+    write(fd, message, 3);  // Write '[4'
+    close(fd);
+
+    // Simulate some work (wasting time)
+    int i, j;
+    double uno;
+    for (i = 0; i < OUTERLOOP; i++) {
+        for (j = 0; j < INNERLOOP; j++) {
+            uno = rand() * rand();
+        }
+    }
+
+    fd = open(DRIVER_PATH, O_WRONLY);
+    if (fd < 0) {
+        perror("Error opening driver");
+        return;
+    }
+
+    char end_message[4] = "]4";
+    write(fd, end_message, 3);  // Write ']4'
+    close(fd);
+}
+
+void *task4(void *ptr) {
+    // Set thread affinity (bind to CPU core 0)
+    cpu_set_t cset;
+    CPU_ZERO(&cset);
+    CPU_SET(0, &cset);
+    pthread_setaffinity_np(pthread_self(), sizeof(cpu_set_t), &cset);
+
+    while (1) {
+        // Wait for the signal from Task 2 (J2)
+        pthread_mutex_lock(&mutex_task_4);  // Lock the mutex before waiting on the condition
+        pthread_cond_wait(&cond_task_4, &mutex_task_4);  // Wait until J2 signals
+        pthread_mutex_unlock(&mutex_task_4);  // Unlock the mutex
+
+        // Execute Task 4 code when signaled
+        task4_code();
+    }
+    return NULL;
 }
