@@ -24,7 +24,7 @@ module_param(special_major, int, S_IRUGO);
 module_param(special_minor, int, S_IRUGO);
 module_param(memsize, int, S_IRUGO);
 
-MODULE_AUTHOR("Your Name");
+MODULE_AUTHOR("Rubin Khadka Chhetri");
 MODULE_LICENSE("Dual BSD/GPL");
 
 /* Special device structure */
