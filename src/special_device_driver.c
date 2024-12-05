@@ -11,6 +11,7 @@
 #include <linux/uaccess.h>      /* copy_from_user */
 #include <linux/kthread.h>      /* for kernel threads */
 #include <linux/delay.h>        /* msleep() for wasting time */
+#include <linux/device.h>       /* device_create(), class_create() */
 
 #define DRIVER_PATH "/dev/special_driver"  /* Device file path */
 
@@ -35,6 +36,7 @@ struct special_dev {
 };
 
 struct special_dev special_device;
+struct class *special_class;  /* Class for device file */
 
 /* Open the device */
 int special_open(struct inode *inode, struct file *filp) {
@@ -89,6 +91,10 @@ struct file_operations special_fops = {
 void special_cleanup_module(void) {
     dev_t devno = MKDEV(special_major, special_minor);
 
+    /* Remove the device file and class */
+    device_destroy(special_class, devno);
+    class_destroy(special_class);
+
     /* Free the cdev entries */
     cdev_del(&special_device.cdev);
 
@@ -137,8 +143,19 @@ int special_init_module(void) {
     else
         printk(KERN_NOTICE "Special Added major: %d minor: %d", special_major, special_minor);
 
+    /* Create a device class */
+    special_class = class_create(THIS_MODULE, "special_class");
+    if (IS_ERR(special_class)) {
+        printk(KERN_ERR "Failed to create class\n");
+        return PTR_ERR(special_class);
+    }
+
+    /* Create the device file in /dev */
+    device_create(special_class, NULL, dev, NULL, "special_driver");
+
     return 0;
 }
 
 module_init(special_init_module);
 module_exit(special_cleanup_module);
+
