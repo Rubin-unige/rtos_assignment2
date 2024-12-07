@@ -38,7 +38,6 @@ install:
 	sudo insmod $(BUILD_DIR)/special_device_driver.ko
 	echo "Kernel module installed."
 
-
 # Uninstall kernel module
 uninstall:
 	sudo rmmod special_device_driver

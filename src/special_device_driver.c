@@ -70,7 +70,7 @@ ssize_t special_write(struct file *filp, const char __user *buf, size_t count, l
     }
 
     /* Log the received data (Thread identifier) to kernel log */
-    printk("%s", dev->data);  /* Logs "[1" to the kernel log */
+    printk("%s", dev->data);  /* Logs "[1" to the kernel log, will print like in assignment*/
 
     retval = count;
 
