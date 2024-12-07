@@ -2,48 +2,45 @@
 KERNELDIR ?= /lib/modules/$(shell uname -r)/build  # Kernel directory
 PWD := $(shell pwd)  # Current working directory
 
+# Directories
+SRC_DIR := src
+BUILD_DIR := build
+
 # Kernel module target
-obj-m := special_device_driver.o  # The kernel module object file
+obj-m := special_device_driver.o
+KERNEL_SRC := $(SRC_DIR)/special_device_driver.c
 
-# User-Space Application Section
-CC = gcc
-CXX = g++  # Use g++ for C++ code
-CFLAGS = -Wall -pthread
-LDFLAGS =
+# Task scheduler target
+TASK_SCHED := $(BUILD_DIR)/tasks_scheduler
+TASK_SCHED_SRC := $(SRC_DIR)/tasks_scheduler.c
+TASK_SCHED_CFLAGS := -Wall -pthread
 
-USER_APP = tasks_scheduler  # Name of the user-space app
-USER_SRC = tasks_scheduler.cpp  # User-space application source file
+.PHONY: all clean kernel user install uninstall
 
-# Default target is to build both the kernel module and the user app
-all: build_kernel_module build_user_app
+# Default target: Build both kernel module and task scheduler(user level)
+all: kernel user
 
-# Build the kernel module
-build_kernel_module:
-	$(MAKE) -C $(KERNELDIR) M=$(PWD) modules
+# Build kernel module
+kernel:
+	$(MAKE) -C $(KERNELDIR) M=$(PWD)/$(SRC_DIR) modules
+	mv $(SRC_DIR)/*.ko $(BUILD_DIR)
 
-# Build the user-space application
-build_user_app: $(USER_APP)
+# Build task scheduler (user level)
+user:
+	gcc $(TASK_SCHED_CFLAGS) $(TASK_SCHED_SRC) -o $(TASK_SCHED)
 
-$(USER_APP): $(USER_SRC)
-	$(CXX) $(CFLAGS) $(USER_SRC) -o $(USER_APP) $(LDFLAGS)
+# Clean build files
+clean:
+	rm -rf $(BUILD_DIR)
 
-# Clean the kernel module build files
-clean_kernel_module:
-	$(MAKE) -C $(KERNELDIR) M=$(PWD) clean
+# Install kernel module
+install:
+	sudo insmod $(BUILD_DIR)/special_device_driver.ko
+	echo "Kernel module installed."
 
-# Clean the user-space application build files
-clean_user_app:
-	rm -f $(USER_APP)
 
-# Clean everything (kernel module + user-space app)
-clean: clean_kernel_module clean_user_app
-
-# Install the kernel module (requires root)
-install_kernel_module:
-	sudo insmod special_device_driver.ko
-
-# Uninstall the kernel module (requires root)
-uninstall_kernel_module:
+# Uninstall kernel module
+uninstall:
 	sudo rmmod special_device_driver
-
-.PHONY: all build_kernel_module build_user_app clean_kernel_module clean_user_app clean install_kernel_module uninstall_kernel_module
+	sudo rm -f /dev/special_driver
+	echo "Kernel module uninstalled and device file removed."

@@ -1,49 +1,47 @@
 
+// Program to schedule periodic and aperiodic task
 // Assignment file
-
-#include <pthread.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <sys/time.h>
-#include <unistd.h>
 #include <math.h>
-#include <sys/types.h>
-#include <sys/types.h>
-#include <fcntl.h>
 #include <unistd.h>
+#include <fcntl.h>
 #include <errno.h>
+#include <sys/types.h>
+#include <pthread.h>
 
+// define driver path 
 #define DRIVER_PATH "/dev/special_driver"
 
-//code of periodic tasks
-void task1_code( );
-void task2_code( );
-void task3_code( );
+// code for periodic tasks
+void task1_code();
+void task2_code();
+void task3_code();
+// code for aperiodic task
+void task4_code();
 
-//code of aperiodic tasks
-void task4_code( );
+// characterstics fucntion of periodic task for timing and sync
+void *task1(void *);
+void *task2(void *);
+void *task3(void *);
+// characterstics fucntion of aperiodic task for timing and sync
+void *task4(void *);
 
-//characteristic function of the thread, only for timing and synchronization
-//periodic tasks
-void *task1( void *);
-void *task2( void *);
-void *task3( void *);
-
-//aperiodic tasks
-void *task4( void *);
-
-
-// initialization of mutexes and conditions (only for aperiodic scheduling)
+// initialise mutex and condition for aperiodic task
 pthread_mutex_t mutex_task_4 = PTHREAD_MUTEX_INITIALIZER;
 pthread_cond_t cond_task_4 = PTHREAD_COND_INITIALIZER;
 
+// define how much time to waste
 #define INNERLOOP 100
 #define OUTERLOOP 100
 
+// define number of periodic and aperiodic tasks
 #define NPERIODICTASKS 3
 #define NAPERIODICTASKS 1
-#define NTASKS NPERIODICTASKS + NAPERIODICTASKS
+#define NTASKS NPERIODICTASKS+NAPERIODICTASKS
 
+// initialise variables 
 long int periods[NTASKS];
 struct timespec next_arrival_time[NTASKS];
 double WCET[NTASKS];
@@ -52,133 +50,99 @@ pthread_t thread_id[NTASKS];
 struct sched_param parameters[NTASKS];
 int missed_deadlines[NTASKS];
 
-int main()
-{
-  	// set task periods in nanoseconds
-	//the first task has period 100 millisecond
-	//the second task has period 200 millisecond
-	//the third task has period 400 millisecond
-	//you can already order them according to their priority; 
-	//if not, you will need to sort them
-  	periods[0]= 300000000; //in nanoseconds
-  	periods[1]= 500000000; //in nanoseconds
-  	periods[2]= 800000000; //in nanoseconds
+int main(){
 
-  	//for aperiodic tasks we set the period equals to 0
-  	periods[3]= 0; 
+    // set task periods
+    periods[0] = 300000000; // in nanoseconds, 300 miliseconds
+    periods[1] = 500000000; // in nanoseconds, 500 miliseconds
+    periods[2] = 800000000; // in nanoseconds, 800 miliseconds
+    // for aperiodicn task it is set to zero
+    periods[3] = 0;
 
-	//this is not strictly necessary, but it is convenient to
-	//assign a name to the maximum and the minimum priotity in the
-	//system. We call them priomin and priomax.
+    // assign name to max and min priority for convenience    
+    struct sched_param priomax;
+    priomax.sched_priority = sched_get_priority_max(SCHED_FIFO);
+    struct sched_param priomin;
+    priomin.sched_priority = sched_get_priority_min(SCHED_FIFO);
 
-  	struct sched_param priomax;
-  	priomax.sched_priority=sched_get_priority_max(SCHED_FIFO);
-  	struct sched_param priomin;
-  	priomin.sched_priority=sched_get_priority_min(SCHED_FIFO);
+    if (getuid() == 0)
+        pthread_setschedparam(pthread_self(), SCHED_FIFO, &priomax);
 
-	// set the maximum priority to the current thread (you are required to be
-  	// superuser). Check that the main thread is executed with superuser privileges
-	// before doing anything else.
+    int i;
+    for (i = 0; i < NTASKS; i++){
 
-  	if (getuid() == 0)
-    		pthread_setschedparam(pthread_self(),SCHED_FIFO,&priomax);
+        // initialize time 1 and 2 to read clock
+        struct timespec time_1, time_2;
+        clock_gettime(CLOCK_REALTIME, &time_1);
 
-  	// execute all tasks in standalone modality in order to measure execution times
-  	// (use gettimeofday). Use the computed values to update the worst case execution
-  	// time of each task.
+        // execute each task
+        // periodicn tasks
+        if(i==0) task1_code();
+        if(i==1) task2_code();
+        if(i==2) task3_code();
+        // aperiodic task
+        if(i==3) task4_code();
 
- 	int i;
-  	for (i =0; i < NTASKS; i++)
-    	{
+        clock_gettime(CLOCK_REALTIME, &time_2);
+                
+        // compute worst case execution time
+        WCET[i]= 1000000000*(time_2.tv_sec - time_1.tv_sec) +(time_2.tv_nsec-time_1.tv_nsec);
+      	printf("\nWorst Case Execution Time %d=%f \n", i, WCET[i]);
+    }
+        
+    // compute U
+    double U = WCET[0]/periods[0]+WCET[1]/periods[1]+WCET[2]/periods[2];
 
-		// initializa time_1 and time_2 required to read the clock
-		struct timespec time_1, time_2;
-		clock_gettime(CLOCK_REALTIME, &time_1);
+    // compute Ulub 
+    // double Ulub = 1; // for harmonic relationship case
+    double Ulub = NPERIODICTASKS*(pow(2.0,(1.0/NPERIODICTASKS)) -1); // since the relation is not harmonic so use this
 
-		//we should execute each task more than one for computing the WCET
-		//periodic tasks
- 	     	if (i==0) task1_code();
-      		if (i==1) task2_code();
-      		if (i==2) task3_code();
-			
-      		//aperiodic tasks
-            if (i==3) task4_code();
+    // check sufficient condition: not satisfied, exit
+    if (U > Ulub){
+        printf("\n U=%lf Ulub=%lf Non schedulable Task Set", U, Ulub);
+        return(-1);
+    }
 
-		clock_gettime(CLOCK_REALTIME, &time_2);
+    printf("\n U=%lf Ulub=%lf Scheduable Task Set", U, Ulub);
+    fflush(stdout);
+    sleep(5);
 
+    // set the minimum priority to the current thread
+    if (getuid() == 0)
+        pthread_setschedparam(pthread_self(),SCHED_FIFO,&priomin);  
 
-		// compute the Worst Case Execution Time (in a real case, we should repeat this many times under
-		//different conditions, in order to have reliable values
+    // set the attributes of each task, including scheduling policy and priority
+    for(i=0; i < NPERIODICTASKS; i++) // periodic task
+    { 
 
-      		WCET[i]= 1000000000*(time_2.tv_sec - time_1.tv_sec)
-			       +(time_2.tv_nsec-time_1.tv_nsec);
-      		printf("\nWorst Case Execution Time %d=%f \n", i, WCET[i]);
-    	}
-
-    	// compute U
-	double U = WCET[0]/periods[0]+WCET[1]/periods[1]+WCET[2]/periods[2];
-
-    // compute Ulub by considering the fact that we have harmonic relationships between periods
-    // double Ulub = 1; 
-    	
-	//if there are no harmonic relationships, use the following formula instead
-	double Ulub = NPERIODICTASKS*(pow(2.0,(1.0/NPERIODICTASKS)) -1);
-	
-	//check the sufficient conditions: if they are not satisfied, exit  
-  	if (U > Ulub)
-    	{
-      		printf("\n U=%lf Ulub=%lf Non schedulable Task Set", U, Ulub);
-      		return(-1);
-    	}
-  	printf("\n U=%lf Ulub=%lf Scheduable Task Set", U, Ulub);
-  	fflush(stdout);
-  	sleep(5);
-
-  	// set the minimum priority to the current thread: this is now required because 
-	//we will assign higher priorities to periodic threads to be soon created
-	//pthread_setschedparam
-
-  	if (getuid() == 0)
-    		pthread_setschedparam(pthread_self(),SCHED_FIFO,&priomin);
-
-  
-  	// set the attributes of each task, including scheduling policy and priority
-  	for (i =0; i < NPERIODICTASKS; i++)
-    	{
-		//initializa the attribute structure of task i
-      		pthread_attr_init(&(attributes[i]));
-
-		//set the attributes to tell the kernel that the priorities and policies are explicitly chosen,
+        // initialise attribute structere of task i
+        pthread_attr_init(&(attributes[i]));
+        //set the attributes to tell the kernel that the priorities and policies are explicitly chosen,
 		//not inherited from the main thread (pthread_attr_setinheritsched) 
-      		pthread_attr_setinheritsched(&(attributes[i]), PTHREAD_EXPLICIT_SCHED);
-      
-		// set the attributes to set the SCHED_FIFO policy (pthread_attr_setschedpolicy)
+        pthread_attr_setinheritsched(&(attributes[i]), PTHREAD_EXPLICIT_SCHED);
+        // set the attributes to set the SCHED_FIFO policy (pthread_attr_setschedpolicy)
 		pthread_attr_setschedpolicy(&(attributes[i]), SCHED_FIFO);
 
-		//properly set the parameters to assign the priority inversely proportional 
-		//to the period
-      		//parameters[i].sched_priority = priomin.sched_priority+NTASKS - i;
-      		parameters[i].sched_priority = sched_get_priority_max(SCHED_FIFO) - i;
+		//properly set the parameters to assign the priority inversely proportional to the period
+        //parameters[i].sched_priority = priomin.sched_priority+NTASKS - i;
+        parameters[i].sched_priority = sched_get_priority_max(SCHED_FIFO) - i;
 
 		//set the attributes and the parameters of the current thread (pthread_attr_setschedparam)
-      		pthread_attr_setschedparam(&(attributes[i]), &(parameters[i]));
-    	}
+        pthread_attr_setschedparam(&(attributes[i]), &(parameters[i]));
+    }
 
+    // aperiodic task
+    for (int i =NPERIODICTASKS; i < NTASKS; i++){
+        // printf(" nperiodic %d", i);
+        pthread_attr_init(&(attributes[i]));
+        pthread_attr_setschedpolicy(&(attributes[i]), SCHED_FIFO);
 
- 	// aperiodic tasks
-  	for (int i =NPERIODICTASKS; i < NTASKS; i++)
-    	{
-			// printf(" nperiodic %d", i);
-      		pthread_attr_init(&(attributes[i]));
-      		pthread_attr_setschedpolicy(&(attributes[i]), SCHED_FIFO);
-
-      		//set minimum priority (background scheduling)
-      		parameters[i].sched_priority = 0;
-      		pthread_attr_setschedparam(&(attributes[i]), &(parameters[i]));
-    	}
-
-
-	//delare the variable to contain the return values of pthread_create	
+        //set minimum priority (background scheduling)
+        parameters[i].sched_priority = 0;
+        pthread_attr_setschedparam(&(attributes[i]), &(parameters[i]));
+    }
+    
+    //delare the variable to contain the return values of pthread_create	
   	int iret[NTASKS];
 
 	//declare variables to read the current time
@@ -187,14 +151,14 @@ int main()
 
   	// set the next arrival time for each task. This is not the beginning of the first
 	// period, but the end of the first period and beginning of the next one. 
-  	for (i = 0; i < NPERIODICTASKS; i++)
-    	{
-		long int next_arrival_nanoseconds = time_1.tv_nsec + periods[i];
-		//then we compute the end of the first period and beginning of the next one
-		next_arrival_time[i].tv_nsec= next_arrival_nanoseconds%1000000000;
-		next_arrival_time[i].tv_sec= time_1.tv_sec + next_arrival_nanoseconds/1000000000;
-       		missed_deadlines[i] = 0;
-    	}
+  	for (i = 0; i < NPERIODICTASKS; i++){
+
+        long int next_arrival_nanoseconds = time_1.tv_nsec + periods[i];
+        //then we compute the end of the first period and beginning of the next one
+        next_arrival_time[i].tv_nsec= next_arrival_nanoseconds%1000000000;
+        next_arrival_time[i].tv_sec= time_1.tv_sec + next_arrival_nanoseconds/1000000000;
+        missed_deadlines[i] = 0;
+    }
 
 	// create all threads(pthread_create)
   	iret[0] = pthread_create( &(thread_id[0]), &(attributes[0]), task1, NULL);
@@ -206,48 +170,52 @@ int main()
   	pthread_join( thread_id[0], NULL);
   	pthread_join( thread_id[1], NULL);
   	pthread_join( thread_id[2], NULL);
-	// pthread_join( thread_id[4], NULL);
+	// pthread_join( thread_id[3], NULL); // not needed for aperiodic task
 
   	// set the next arrival time for each task. This is not the beginning of the first
 	// period, but the end of the first period and beginning of the next one. 
-  	for (i = 0; i < NTASKS; i++)
-    	{
-      		printf ("\nMissed Deadlines Task %d=%d", i, missed_deadlines[i]);
+  	for (i = 0; i < NTASKS; i++){
+
+      	printf ("\nMissed Deadlines Task %d=%d", i, missed_deadlines[i]);
 		fflush(stdout);
-    	}
+    }
+
   	exit(0);
+        
 }
 
-void task1_code() {
+// codes of tasks
+void task1_code() { // periodic task 1
     int fd;
-
+    // open driver
     fd = open(DRIVER_PATH, O_WRONLY);
     if (fd < 0) {
         perror("Error opening driver");
         return;
     }
-
+    // write start of message in driver and close it
     char message[4] = "[1";
     write(fd, message, 3);  // Write '[1'
     close(fd);
 
+    // waste time
     int i, j;
     double uno;
     for (i = 0; i < OUTERLOOP; i++) {
         for (j = 0; j < INNERLOOP; j++) {
-            uno = rand() * rand() % 10;
+            uno = rand() * rand() % 10; // this is computed but not used, can be removed or ignored
         }
     }
 
+    // open file again
     fd = open(DRIVER_PATH, O_WRONLY);
     if (fd < 0) {
         perror("Error opening driver");
         return;
     }
-
+    // write the end of message and close it
     char end_message[4] = "]1";
     write(fd, end_message, 3);  // Write ']1'
-
     close(fd);
 }
 
@@ -272,15 +240,16 @@ void *task1(void *ptr) {
     }
 }
 
-void task2_code() {
-    int fd;
 
+void task2_code() { // periodic task 2
+    int fd;
+    // open driver
     fd = open(DRIVER_PATH, O_WRONLY);
     if (fd < 0) {
         perror("Error opening driver");
         return;
     }
-
+    // write start of message in driver and close it
     char message[4] = "[2";
     if (write(fd, message, 3) < 0) {
         perror("Error writing to driver");
@@ -289,28 +258,29 @@ void task2_code() {
     }
     close(fd);
 
+    // waste time
     int i, j;
     double uno;
     for (i = 0; i < OUTERLOOP; i++) {
         for (j = 0; j < INNERLOOP; j++) {
-            uno = rand() * rand() % 10;
+            uno = rand() * rand() % 10; // here this value is used to wake up aperiodic task 4
         }
     }
-    if (uno == 1) {
-        printf("[4]"); fflush(stdout);
 
+    if (uno == 1) { // when the random uno value is 1 , wake task 4 up
         // Signal Task 4 (J4) to execute
         pthread_mutex_lock(&mutex_task_4);
         pthread_cond_signal(&cond_task_4);  // Wake up Task 4
         pthread_mutex_unlock(&mutex_task_4);
     }
 
+    // open the driver again
     fd = open(DRIVER_PATH, O_WRONLY);
     if (fd < 0) {
         perror("Error opening driver");
         return;
     }
-
+    // write the end of message in driver and close it
     char end_message[4] = "]2";
     if (write(fd, end_message, 3) < 0) {
         perror("Error writing to driver");
@@ -345,34 +315,34 @@ void *task2(void *ptr) {
 
 void task3_code() {
     int fd;
-
+    // open driver
     fd = open(DRIVER_PATH, O_WRONLY);
     if (fd < 0) {
         perror("Error opening driver");
         return;
     }
-
+    // write start of message in driver and close it
     char message[4] = "[3";
     write(fd, message, 3);  // Write '[3'
     close(fd);
 
+    // waste time
     int i, j;
     double uno;
     for (i = 0; i < OUTERLOOP; i++) {
         for (j = 0; j < INNERLOOP; j++) {
-            uno = rand() * rand() % 10;
+            uno = rand() * rand() % 10; // similar to task 1 , not used here
         }
     }
-
+    // open driver again
     fd = open(DRIVER_PATH, O_WRONLY);
     if (fd < 0) {
         perror("Error opening driver");
         return;
     }
-
+    // write end of message in driver and close it
     char end_message[4] = "]3";
     write(fd, end_message, 3);  // Write ']3'
-
     close(fd);
 }
 
@@ -398,18 +368,18 @@ void *task3(void *ptr) {
 }
 void task4_code() {
     int fd;
-
+    // open driver
     fd = open(DRIVER_PATH, O_WRONLY);
     if (fd < 0) {
         perror("Error opening driver");
         return;
     }
-
+    // write start of message in driver and close it
     char message[4] = "[4";
     write(fd, message, 3);  // Write '[4'
     close(fd);
 
-    // Simulate some work (wasting time)
+    // waste time
     int i, j;
     double uno;
     for (i = 0; i < OUTERLOOP; i++) {
@@ -417,13 +387,13 @@ void task4_code() {
             uno = rand() * rand();
         }
     }
-
+    // open driver again
     fd = open(DRIVER_PATH, O_WRONLY);
     if (fd < 0) {
         perror("Error opening driver");
         return;
     }
-
+    // write end of message in the driver and close it 
     char end_message[4] = "]4";
     write(fd, end_message, 3);  // Write ']4'
     close(fd);
@@ -447,3 +417,4 @@ void *task4(void *ptr) {
     }
     return NULL;
 }
+
