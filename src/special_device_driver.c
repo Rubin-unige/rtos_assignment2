@@ -9,11 +9,9 @@
 #include <linux/cdev.h>         /* char device */
 #include <linux/semaphore.h>    /* semaphore for mutual exclusion */
 #include <linux/uaccess.h>      /* copy_from_user */
-#include <linux/kthread.h>      /* for kernel threads */
-#include <linux/delay.h>        /* msleep() for wasting time */
-#include <linux/device.h>       /* device_create(), class_create() */
 
-#define DRIVER_PATH "/dev/special_driver"  /* Device file path */
+MODULE_AUTHOR("Rubin Khadka Chhetri");
+MODULE_LICENSE("Dual BSD/GPL");
 
 /* Parameters */
 int special_major = 0;
@@ -24,9 +22,6 @@ module_param(special_major, int, S_IRUGO);
 module_param(special_minor, int, S_IRUGO);
 module_param(memsize, int, S_IRUGO);
 
-MODULE_AUTHOR("Rubin Khadka Chhetri");
-MODULE_LICENSE("Dual BSD/GPL");
-
 /* Special device structure */
 struct special_dev {
     char *data;         /* Pointer to data area */
@@ -36,7 +31,6 @@ struct special_dev {
 };
 
 struct special_dev special_device;
-struct class *special_class;  /* Class for device file */
 
 /* Open the device */
 int special_open(struct inode *inode, struct file *filp) {
@@ -70,7 +64,7 @@ ssize_t special_write(struct file *filp, const char __user *buf, size_t count, l
     }
 
     /* Log the received data (Thread identifier) to kernel log */
-    printk("%s", dev->data);  /* Logs "[1" to the kernel log, will print like in assignment*/
+    printk("%s", dev->data);  /* Logs "[1" to the kernel log */
 
     retval = count;
 
@@ -90,10 +84,6 @@ struct file_operations special_fops = {
 /* Cleanup the module */
 void special_cleanup_module(void) {
     dev_t devno = MKDEV(special_major, special_minor);
-
-    /* Remove the device file and class */
-    device_destroy(special_class, devno);
-    class_destroy(special_class);
 
     /* Free the cdev entries */
     cdev_del(&special_device.cdev);
@@ -143,19 +133,8 @@ int special_init_module(void) {
     else
         printk(KERN_NOTICE "Special Added major: %d minor: %d", special_major, special_minor);
 
-    /* Create a device class */
-    special_class = class_create(THIS_MODULE, "special_class");
-    if (IS_ERR(special_class)) {
-        printk(KERN_ERR "Failed to create class\n");
-        return PTR_ERR(special_class);
-    }
-
-    /* Create the device file in /dev */
-    device_create(special_class, NULL, dev, NULL, "special_driver");
-
     return 0;
 }
 
 module_init(special_init_module);
 module_exit(special_cleanup_module);
-
