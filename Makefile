@@ -38,12 +38,13 @@ else
 
     # Install kernel module, create device file
     install: kernel
-	    # Run the bash script to check and create the device node
-        sudo ./$(BASH_SCRIPT)
         # Install the kernel module
         sudo insmod $(MODULE_NAME).ko
         echo "Kernel module installed."
-
+        # Make executable
+        chmod +x $(BASH_SCRIPT)
+        # Run the bash script
+        sudo ./$(BASH_SCRIPT)
 
     # Uninstall kernel module and remove the device file
     uninstall:

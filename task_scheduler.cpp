@@ -1,6 +1,7 @@
 
 // Program to schedule periodic and aperiodic task
 // Assignment file
+#include <pthread.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <sys/time.h>
@@ -9,7 +10,6 @@
 #include <fcntl.h>
 #include <errno.h>
 #include <sys/types.h>
-#include <pthread.h>
 
 // define driver path 
 #define DRIVER_PATH "/dev/special_driver"
