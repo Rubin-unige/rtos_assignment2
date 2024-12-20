@@ -39,7 +39,7 @@ pthread_cond_t cond_task_4 = PTHREAD_COND_INITIALIZER;
 // define number of periodic and aperiodic tasks
 #define NPERIODICTASKS 3
 #define NAPERIODICTASKS 1
-#define NTASKS NPERIODICTASKS+NAPERIODICTASKS
+#define NTASKS NPERIODICTASKS + NAPERIODICTASKS
 
 // initialise variables 
 long int periods[NTASKS];
@@ -60,13 +60,12 @@ int main(){
     periods[3] = 0;
 
     // assign name to max and min priority for convenience    
-    struct sched_param priomax;
-    priomax.sched_priority = sched_get_priority_max(SCHED_FIFO);
-    struct sched_param priomin;
-    priomin.sched_priority = sched_get_priority_min(SCHED_FIFO);
+  	struct sched_param priomax;
+  	priomax.sched_priority=sched_get_priority_max(SCHED_FIFO);
+  	struct sched_param priomin;
+  	priomin.sched_priority=sched_get_priority_min(SCHED_FIFO);
 
-    if (getuid() == 0)
-        pthread_setschedparam(pthread_self(), SCHED_FIFO, &priomax);
+    if (getuid() == 0) pthread_setschedparam(pthread_self(), SCHED_FIFO, &priomax);
 
     int i;
     for (i = 0; i < NTASKS; i++){
@@ -108,18 +107,18 @@ int main(){
     sleep(5);
 
     // set the minimum priority to the current thread
-    if (getuid() == 0)
-        pthread_setschedparam(pthread_self(),SCHED_FIFO,&priomin);  
+    if (getuid() == 0) pthread_setschedparam(pthread_self(),SCHED_FIFO,&priomin);  
 
     // set the attributes of each task, including scheduling policy and priority
     for(i=0; i < NPERIODICTASKS; i++) // periodic task
     { 
-
         // initialise attribute structere of task i
         pthread_attr_init(&(attributes[i]));
+
         //set the attributes to tell the kernel that the priorities and policies are explicitly chosen,
 		//not inherited from the main thread (pthread_attr_setinheritsched) 
         pthread_attr_setinheritsched(&(attributes[i]), PTHREAD_EXPLICIT_SCHED);
+
         // set the attributes to set the SCHED_FIFO policy (pthread_attr_setschedpolicy)
 		pthread_attr_setschedpolicy(&(attributes[i]), SCHED_FIFO);
 
@@ -269,9 +268,9 @@ void task2_code() { // periodic task 2
 
     if (uno == 1) { // when the random uno value is 1 , wake task 4 up
         // Signal Task 4 (J4) to execute
-        pthread_mutex_lock(&mutex_task_4);
+        // pthread_mutex_lock(&mutex_task_4);
         pthread_cond_signal(&cond_task_4);  // Wake up Task 4
-        pthread_mutex_unlock(&mutex_task_4);
+        // pthread_mutex_unlock(&mutex_task_4);
     }
 
     // open the driver again
@@ -301,10 +300,10 @@ void *task2(void *ptr) {
         // Execute Task 2 specific code (open, write, close)
         task2_code();
 
-        // Step (ix) - Sleep until the end of the current period (start of next period)
+        // Sleep until the end of the current period (start of next period)
         clock_nanosleep(CLOCK_REALTIME, TIMER_ABSTIME, &next_arrival_time[1], NULL);
 
-        // Step (x) - Update the next arrival time for the next iteration
+        // Update the next arrival time for the next iteration
         long int next_arrival_nanoseconds = next_arrival_time[1].tv_nsec + periods[1];
         next_arrival_time[1].tv_nsec = next_arrival_nanoseconds % 1000000000;
         next_arrival_time[1].tv_sec = next_arrival_time[1].tv_sec + next_arrival_nanoseconds / 1000000000;
@@ -408,9 +407,9 @@ void *task4(void *ptr) {
 
     while (1) {
         // Wait for the signal from Task 2 (J2)
-        pthread_mutex_lock(&mutex_task_4);  // Lock the mutex before waiting on the condition
+        // pthread_mutex_lock(&mutex_task_4);  // Lock the mutex before waiting on the condition
         pthread_cond_wait(&cond_task_4, &mutex_task_4);  // Wait until J2 signals
-        pthread_mutex_unlock(&mutex_task_4);  // Unlock the mutex
+        // pthread_mutex_unlock(&mutex_task_4);  // Unlock the mutex
 
         // Execute Task 4 code when signaled
         task4_code();

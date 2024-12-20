@@ -19,10 +19,11 @@ if [ -e "$DEVICE_PATH" ]; then
     exit 0
 fi
 
-# Create the device file using mknod
-sudo mknod $DEVICE_PATH c $MAJOR $MINOR
-
-# Change permissions if necessary
-sudo chmod 666 $DEVICE_PATH
-
-echo "Device created at $DEVICE_PATH with major $MAJOR and minor $MINOR"
+# Create the device file
+if sudo mknod "$DEVICE_PATH" c "$MAJOR" "$MINOR"; then
+    sudo chmod 666 "$DEVICE_PATH"
+    echo "Device created at $DEVICE_PATH with major $MAJOR and minor $MINOR"
+else
+    echo "Error: Failed to create device file."
+    exit 2
+fi

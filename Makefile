@@ -1,54 +1,64 @@
-# Kernel Module Section
-KERNELDIR ?= /lib/modules/$(shell uname -r)/build  # Kernel directory
-PWD := $(shell pwd)  # Current working directory
+# If KERNELRELEASE is defined, we've been invoked from the kernel build system and can use its language.
+ifneq ($(KERNELRELEASE),)
+    obj-m := special_device_driver.o  # Kernel module object
+    KERNEL_SRC := special_device_driver.c
+    TASK_SCHED_SRC := task_scheduler.c
+    TASK_SCHED_CFLAGS := -Wall -pthread
 
-# Directories
-SRC_DIR := src
-BUILD_DIR := build
-SCRIPTS_DIR := scripts  # Updated to reflect the location of the bash script
+# Otherwise, we were called directly from the command line; invoke the kernel build system.
+else
+    KERNELDIR ?= /lib/modules/$(shell uname -r)/build  # Kernel directory
+    PWD := $(shell pwd)  # Current working directory
 
-# Kernel module target
-obj-m := special_device_driver.o
-KERNEL_SRC := $(SRC_DIR)/special_device_driver.c
+    # Kernel module and task scheduler source files
+    obj-m := special_device_driver.o
+    TASK_SCHED_SRC := task_scheduler.c
+    TASK_SCHED_CFLAGS := -Wall -pthread
 
-# Task scheduler target
-TASK_SCHED := $(BUILD_DIR)/tasks_scheduler
-TASK_SCHED_SRC := $(SRC_DIR)/tasks_scheduler.c
-TASK_SCHED_CFLAGS := -Wall -pthread
+    # Bash script for creating device
+    BASH_SCRIPT := create_device.sh
 
-# Bash script to create the device file
-BASH_SCRIPT := $(SCRIPTS_DIR)/create_device.sh 
+    # Device and module paths
+    DEVICE_PATH := /dev/special_driver
+    MODULE_NAME := special_device_driver
 
-.PHONY: all clean kernel user install uninstall
+    # Targets
+    .PHONY: all clean kernel user install uninstall dmesg_log
 
-# Default target: Build both kernel module and task scheduler
-all: kernel user
+    # Default target: Build both kernel module and task scheduler
+    all: kernel user
 
-# Build kernel module (kernel level)
-kernel:
-	$(MAKE) -C $(KERNELDIR) M=$(PWD)/$(SRC_DIR) modules
-	mv $(SRC_DIR)/*.ko $(BUILD_DIR)
+    # Build kernel module (kernel level)
+    kernel:
+        $(MAKE) -C $(KERNELDIR) M=$(PWD) modules
 
-# Build task scheduler (user level)
-user:
-	gcc $(TASK_SCHED_CFLAGS) $(TASK_SCHED_SRC) -o $(TASK_SCHED)
+    # Build task scheduler (user level)
+    user:
+        gcc $(TASK_SCHED_CFLAGS) $(TASK_SCHED_SRC) -o task_scheduler
 
-# Clean build files
-clean:
-	rm -rf $(BUILD_DIR)
+    # Install kernel module, create device file
+    install: kernel
+	    # Run the bash script to check and create the device node
+        sudo ./$(BASH_SCRIPT)
+        # Install the kernel module
+        sudo insmod $(MODULE_NAME).ko
+        echo "Kernel module installed."
 
-# Install kernel module and create the device
-install: kernel
-	# Install the kernel module with sudo
-	sudo insmod $(BUILD_DIR)/special_device_driver.ko
-	echo "Kernel module installed."
-	# Run the bash script to create the device node with sudo
-	sudo ./$(BASH_SCRIPT)
 
-# Uninstall kernel module and remove the device file
-uninstall:
-	# Remove the kernel module with sudo
-	sudo rmmod special_device_driver
-	# Remove the device file with sudo
-	sudo rm -f /dev/special_driver
-	echo "Kernel module uninstalled and device file removed."
+    # Uninstall kernel module and remove the device file
+    uninstall:
+        # Remove the kernel module
+        sudo rmmod $(MODULE_NAME)
+        # Remove the device file
+        sudo rm -f $(DEVICE_PATH)
+    
+    # Clean up build files and device files
+    clean:
+        $(MAKE) -C $(KERNELDIR) M=$(PWD) clean
+        @rm -f task_scheduler
+
+    # View the kernel log (dmesg) related to the module
+    dmesg_log:
+        @dmesg | grep $(MODULE_NAME) || echo "No relevant kernel log found."
+
+endif

@@ -39,8 +39,8 @@ int special_open(struct inode *inode, struct file *filp) {
     return 0;
 }
 
-/* Release the device */
-int special_release(struct inode *inode, struct file *filp) {
+/* Close the device */
+int special_close(struct inode *inode, struct file *filp) {
     return 0;
 }
 
@@ -78,7 +78,7 @@ struct file_operations special_fops = {
     .owner =    THIS_MODULE,
     .write =    special_write,
     .open =     special_open,
-    .release =  special_release,
+    .release =  special_close,
 };
 
 /* Cleanup the module */
