@@ -25,7 +25,7 @@ kernel:
 
 # Build task scheduler (user level)
 user:
-	gcc $(TASK_SCHED_SRC) $(TASK_SCHED_CFLAGS) -o task_scheduler
+	g++ $(TASK_SCHED_SRC) $(TASK_SCHED_CFLAGS) -o task_scheduler
 
 # Install kernel module, create device file
 install:
@@ -47,4 +47,6 @@ uninstall:
 # Clean up build files and device files
 clean:
 	$(MAKE) -C $(KERNELDIR) M=$(PWD) clean
-	@rm -f task_scheduler
+	rm -f task_scheduler
+	# Remove kernel module binary
+	rm -f $(MODULE_NAME).ko

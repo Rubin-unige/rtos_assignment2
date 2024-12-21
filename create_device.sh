@@ -1,10 +1,9 @@
 #!/bin/bash
 
-DEVICE_NAME="special_device"
 DEVICE_PATH="/dev/special_device"
 
 # Get the major number from /proc/devices
-MAJOR=$(grep -i "$DEVICE_NAME" /proc/devices | awk '{print $1}')
+MAJOR=$(grep -i "special_device" /proc/devices | awk '{print $1}')
 
 if [ -z "$MAJOR" ]; then
     exit 1
@@ -21,7 +20,7 @@ fi
 
 # Create the device file
 if sudo mknod "$DEVICE_PATH" c "$MAJOR" "$MINOR"; then
-    sudo chmod 666 "$DEVICE_PATH"
+    sudo chmod +x "$DEVICE_PATH"
     echo "Device created at $DEVICE_PATH with major $MAJOR and minor $MINOR"
 else
     echo "Error: Failed to create device file."

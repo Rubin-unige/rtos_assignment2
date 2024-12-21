@@ -199,10 +199,8 @@ void task1_code() { // periodic task 1
 
     // waste time
     int i, j;
-    double uno;
     for (i = 0; i < OUTERLOOP; i++) {
         for (j = 0; j < INNERLOOP; j++) {
-            uno = rand() * rand() % 10; // this is computed but not used, can be removed or ignored
         }
     }
 
@@ -262,11 +260,11 @@ void task2_code() { // periodic task 2
     double uno;
     for (i = 0; i < OUTERLOOP; i++) {
         for (j = 0; j < INNERLOOP; j++) {
-            uno = rand() * rand() % 10; // here this value is used to wake up aperiodic task 4
+            uno = (rand() % 10) * (rand() % 10) % 10; // here this value is used to wake up aperiodic task 4
         }
     }
 
-    if (uno == 1) { // when the random uno value is 1 , wake task 4 up
+    if (uno % 2 != 0) { // check if uno value is odd (to execute task 4 often)
         // Signal Task 4 (J4) to execute
         // pthread_mutex_lock(&mutex_task_4);
         pthread_cond_signal(&cond_task_4);  // Wake up Task 4
@@ -327,10 +325,8 @@ void task3_code() {
 
     // waste time
     int i, j;
-    double uno;
     for (i = 0; i < OUTERLOOP; i++) {
         for (j = 0; j < INNERLOOP; j++) {
-            uno = rand() * rand() % 10; // similar to task 1 , not used here
         }
     }
     // open driver again
@@ -380,10 +376,8 @@ void task4_code() {
 
     // waste time
     int i, j;
-    double uno;
     for (i = 0; i < OUTERLOOP; i++) {
         for (j = 0; j < INNERLOOP; j++) {
-            uno = rand() * rand();
         }
     }
     // open driver again
