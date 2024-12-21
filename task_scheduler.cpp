@@ -264,7 +264,7 @@ void task2_code() { // periodic task 2
         }
     }
 
-    if (uno % 2 != 0) { // check if uno value is odd (to execute task 4 often)
+    if ((int)uno % 2 != 0) { // check if uno value is odd (to execute task 4 often)
         // Signal Task 4 (J4) to execute
         // pthread_mutex_lock(&mutex_task_4);
         pthread_cond_signal(&cond_task_4);  // Wake up Task 4
