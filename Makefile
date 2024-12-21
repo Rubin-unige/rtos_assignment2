@@ -23,10 +23,10 @@ else
     MODULE_NAME := special_device_driver
 
     # Targets
-    .PHONY: all clean kernel user install uninstall dmesg_log
+    .PHONY: all clean kernel user install uninstall
 
     # Default target: Build both kernel module and task scheduler
-    all: kernel user
+    all: kernel user install
 
     # Build kernel module (kernel level)
     kernel:
@@ -34,10 +34,10 @@ else
 
     # Build task scheduler (user level)
     user:
-        gcc $(TASK_SCHED_CFLAGS) $(TASK_SCHED_SRC) -o task_scheduler
+        gcc $(TASK_SCHED_SRC) $(TASK_SCHED_CFLAGS) -o task_scheduler
 
     # Install kernel module, create device file
-    install: kernel
+    install:
         # Install the kernel module
         sudo insmod $(MODULE_NAME).ko
         echo "Kernel module installed."
@@ -57,9 +57,5 @@ else
     clean:
         $(MAKE) -C $(KERNELDIR) M=$(PWD) clean
         @rm -f task_scheduler
-
-    # View the kernel log (dmesg) related to the module
-    dmesg_log:
-        @dmesg | grep $(MODULE_NAME) || echo "No relevant kernel log found."
 
 endif
