@@ -1,7 +1,7 @@
 #!/bin/bash
 
-DEVICE_NAME="special_device_driver"
-DEVICE_PATH="/dev/special_driver"
+DEVICE_NAME="special_device"
+DEVICE_PATH="/dev/special_device"
 
 # Get the major number from /proc/devices
 MAJOR=$(grep -i "$DEVICE_NAME" /proc/devices | awk '{print $1}')

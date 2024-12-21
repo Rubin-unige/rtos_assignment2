@@ -12,7 +12,7 @@
 #include <sys/types.h>
 
 // define driver path 
-#define DRIVER_PATH "/dev/special_driver"
+#define DRIVER_PATH "/dev/special_device"
 
 // code for periodic tasks
 void task1_code();

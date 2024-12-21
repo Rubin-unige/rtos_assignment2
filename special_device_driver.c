@@ -103,9 +103,9 @@ int special_init_module(void) {
     /* Register the device (major number) */
     if (special_major) {  
         dev = MKDEV(special_major, special_minor);
-        result = register_chrdev_region(dev, 1, "special");
+        result = register_chrdev_region(dev, 1, "special_device");
     } else {            
-        result = alloc_chrdev_region(&dev, special_minor, 1, "special");
+        result = alloc_chrdev_region(&dev, special_minor, 1, "special_device");
         special_major = MAJOR(dev);
     }
 
