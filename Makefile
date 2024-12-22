@@ -18,7 +18,7 @@ BASH_SCRIPT := create_device.sh
 .PHONY: all kernel user install uninstall clean
 
 # Default target: Build both kernel module and task scheduler
-all: uninstall clean kernel user install
+all: kernel user install
 
 # Build kernel module (kernel level)
 kernel:
@@ -30,6 +30,11 @@ user:
 
 # Install kernel module, create device file
 install:
+	# Check if the module is already loaded
+	if lsmod | grep "$(MODULE_NAME)" &> /dev/null; then \
+		echo "Module $(MODULE_NAME) is already loaded. Removing it."; \
+		sudo rmmod $(MODULE_NAME); \
+	fi
 	# Install the kernel module
 	sudo insmod $(MODULE_NAME).ko
 	echo "Kernel module installed."
