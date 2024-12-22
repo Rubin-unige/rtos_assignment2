@@ -32,4 +32,4 @@ Folder Structure:
 	A Bash script to create a character device file using mknod, retrieving its major number dynamically from /proc/devices.
 
 * Makefile
-	This Makefile automates the build, installation, and cleanup of a kernel module(special_device), a user-level task scheduler (task_scheduler), and the creation of a device f	ile for the kernel module.
+	This Makefile automates the build, installation, and cleanup of a kernel module(special_device), a user-level task scheduler (task_scheduler), and the creation of a device file for the kernel module.

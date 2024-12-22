@@ -65,7 +65,8 @@ int main(){
   	struct sched_param priomin;
   	priomin.sched_priority=sched_get_priority_min(SCHED_FIFO);
 
-    if (getuid() == 0) pthread_setschedparam(pthread_self(), SCHED_FIFO, &priomax);
+    if (getuid() == 0) 
+        pthread_setschedparam(pthread_self(), SCHED_FIFO, &priomax);
 
     int i;
     for (i = 0; i < NTASKS; i++){
@@ -107,7 +108,8 @@ int main(){
     sleep(5);
 
     // set the minimum priority to the current thread
-    if (getuid() == 0) pthread_setschedparam(pthread_self(),SCHED_FIFO,&priomin);  
+    if (getuid() == 0) 
+        pthread_setschedparam(pthread_self(),SCHED_FIFO,&priomin);  
 
     // set the attributes of each task, including scheduling policy and priority
     for(i=0; i < NPERIODICTASKS; i++) // periodic task
@@ -201,6 +203,7 @@ void task1_code() { // periodic task 1
     int i, j;
     for (i = 0; i < OUTERLOOP; i++) {
         for (j = 0; j < INNERLOOP; j++) {
+            sched_yield();
         }
     }
 
@@ -211,7 +214,7 @@ void task1_code() { // periodic task 1
         return;
     }
     // write the end of message and close it
-    char end_message[4] = "]1";
+    char end_message[4] = "1]";
     write(fd, end_message, 3);  // Write ']1'
     close(fd);
 }
@@ -258,8 +261,9 @@ void task2_code() { // periodic task 2
     // waste time
     int i, j;
     double uno;
-    for (i = 0; i < OUTERLOOP; i++) {
+    for (i = 0; i < 1000; i++) {
         for (j = 0; j < INNERLOOP; j++) {
+            sched_yield();
             uno = (rand() % 10) * (rand() % 10) % 10; // here this value is used to wake up aperiodic task 4
         }
     }
@@ -278,7 +282,7 @@ void task2_code() { // periodic task 2
         return;
     }
     // write the end of message in driver and close it
-    char end_message[4] = "]2";
+    char end_message[4] = "2]";
     if (write(fd, end_message, 3) < 0) {
         perror("Error writing to driver");
         close(fd);
@@ -327,6 +331,7 @@ void task3_code() {
     int i, j;
     for (i = 0; i < OUTERLOOP; i++) {
         for (j = 0; j < INNERLOOP; j++) {
+            sched_yield();
         }
     }
     // open driver again
@@ -336,7 +341,7 @@ void task3_code() {
         return;
     }
     // write end of message in driver and close it
-    char end_message[4] = "]3";
+    char end_message[4] = "3]";
     write(fd, end_message, 3);  // Write ']3'
     close(fd);
 }
@@ -378,6 +383,7 @@ void task4_code() {
     int i, j;
     for (i = 0; i < OUTERLOOP; i++) {
         for (j = 0; j < INNERLOOP; j++) {
+            sched_yield();
         }
     }
     // open driver again
@@ -387,7 +393,7 @@ void task4_code() {
         return;
     }
     // write end of message in the driver and close it 
-    char end_message[4] = "]4";
+    char end_message[4] = "4]";
     write(fd, end_message, 3);  // Write ']4'
     close(fd);
 }
