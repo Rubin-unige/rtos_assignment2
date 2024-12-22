@@ -1,23 +1,24 @@
 KERNELDIR ?= /lib/modules/$(shell uname -r)/build  # Kernel directory
 PWD := $(shell pwd)  # Current working directory
 
+# Device and module paths
+DEVICE_PATH := /dev/special_device
+MODULE_NAME := special_device
+
 # Kernel module and task scheduler source files
-obj-m := special_device_driver.o
+obj-m := special_device.o
+TASK_OBJ := task_scheduler
 TASK_SCHED_SRC := task_scheduler.cpp
 TASK_SCHED_CFLAGS := -lpthread
 
 # Bash script for creating device
 BASH_SCRIPT := create_device.sh
 
-# Device and module paths
-DEVICE_PATH := /dev/special_device
-MODULE_NAME := special_device
-
 # Targets
-.PHONY: all clean kernel user install uninstall
+.PHONY: all kernel user install uninstall clean
 
 # Default target: Build both kernel module and task scheduler
-all: kernel user install
+all: uninstall clean kernel user install
 
 # Build kernel module (kernel level)
 kernel:
@@ -25,7 +26,7 @@ kernel:
 
 # Build task scheduler (user level)
 user:
-	g++ $(TASK_SCHED_SRC) $(TASK_SCHED_CFLAGS) -o task_scheduler
+	g++ $(TASK_SCHED_SRC) $(TASK_SCHED_CFLAGS) -o $(TASK_OBJ)
 
 # Install kernel module, create device file
 install:

@@ -63,9 +63,8 @@ ssize_t special_write(struct file *filp, const char __user *buf, size_t count, l
         goto out;
     }
 
-    /* Log the received data (Thread identifier) to kernel log */
-    printk("%s", dev->data);  /* Logs "[1" to the kernel log */
-
+    /* Log the received data from task scheduler to kernel log */
+    printk("%s", dev->data);
     retval = count;
 
 out:
@@ -76,9 +75,9 @@ out:
 /* File operations for the special device */
 struct file_operations special_fops = {
     .owner =    THIS_MODULE,
-    .write =    special_write,
-    .open =     special_open,
-    .release =  special_close,
+    .write =    special_write, // write 
+    .open =     special_open, // open 
+    .release =  special_close, // close
 };
 
 /* Cleanup the module */

@@ -18,6 +18,7 @@
 void task1_code();
 void task2_code();
 void task3_code();
+
 // code for aperiodic task
 void task4_code();
 
@@ -25,6 +26,7 @@ void task4_code();
 void *task1(void *);
 void *task2(void *);
 void *task3(void *);
+
 // characterstics fucntion of aperiodic task for timing and sync
 void *task4(void *);
 
@@ -33,8 +35,10 @@ pthread_mutex_t mutex_task_4 = PTHREAD_MUTEX_INITIALIZER;
 pthread_cond_t cond_task_4 = PTHREAD_COND_INITIALIZER;
 
 // define how much time to waste
-#define INNERLOOP 100
+#define INNERLOOP 100 
 #define OUTERLOOP 100
+#define INNERLOOP_LONG 1000 // testing preemption using long time to waste
+#define OUTERLOOP_LONG 1000
 
 // define number of periodic and aperiodic tasks
 #define NPERIODICTASKS 3
@@ -56,6 +60,7 @@ int main(){
     periods[0] = 300000000; // in nanoseconds, 300 miliseconds
     periods[1] = 500000000; // in nanoseconds, 500 miliseconds
     periods[2] = 800000000; // in nanoseconds, 800 miliseconds
+
     // for aperiodicn task it is set to zero
     periods[3] = 0;
 
@@ -95,7 +100,8 @@ int main(){
 
     // compute Ulub 
     // double Ulub = 1; // for harmonic relationship case
-    double Ulub = NPERIODICTASKS*(pow(2.0,(1.0/NPERIODICTASKS)) -1); // since the relation is not harmonic so use this
+    // since the relation is not harmonic so use this
+    double Ulub = NPERIODICTASKS*(pow(2.0,(1.0/NPERIODICTASKS)) -1);
 
     // check sufficient condition: not satisfied, exit
     if (U > Ulub){
@@ -187,36 +193,32 @@ int main(){
 
 // codes of tasks
 void task1_code() { // periodic task 1
-    int fd;
-    // open driver
-    fd = open(DRIVER_PATH, O_WRONLY);
-    if (fd < 0) {
-        perror("Error opening driver");
-        return;
-    }
-    // write start of message in driver and close it
-    char message[4] = "[1";
-    write(fd, message, 3);  // Write '[1'
-    close(fd);
+    int file_device;
+
+    // open device for write only
+    file_device = open(DRIVER_PATH, O_WRONLY);
+    // write message in driver
+    char start_message[4] = "[1";
+    write(file_device, start_message, 3);  // Write '[1'
+    close(file_device); // close it
 
     // waste time
+    // this loop was holding the cpu hostage, was not allowing other task to prempt based on priority
+    // I tried increasing the loop on task 2 and 3 to test premption, it was not working
+    // sched_yield fucntion is used to let other task preempt this task if required
     int i, j;
     for (i = 0; i < OUTERLOOP; i++) {
         for (j = 0; j < INNERLOOP; j++) {
-            sched_yield();
+            sched_yield(); // this function is used to let other task to run or preempt
         }
     }
 
     // open file again
-    fd = open(DRIVER_PATH, O_WRONLY);
-    if (fd < 0) {
-        perror("Error opening driver");
-        return;
-    }
-    // write the end of message and close it
+    file_device = open(DRIVER_PATH, O_WRONLY);
+    // write the message again
     char end_message[4] = "1]";
-    write(fd, end_message, 3);  // Write ']1'
-    close(fd);
+    write(file_device, end_message, 3);  // Write '1]'
+    close(file_device); // Close the device
 }
 
 void *task1(void *ptr) {
@@ -238,32 +240,30 @@ void *task1(void *ptr) {
         next_arrival_time[0].tv_nsec = next_arrival_nanoseconds % 1000000000;
         next_arrival_time[0].tv_sec = next_arrival_time[0].tv_sec + next_arrival_nanoseconds / 1000000000;
     }
+
+    return NULL;
 }
 
-
 void task2_code() { // periodic task 2
-    int fd;
-    // open driver
-    fd = open(DRIVER_PATH, O_WRONLY);
-    if (fd < 0) {
-        perror("Error opening driver");
-        return;
-    }
-    // write start of message in driver and close it
-    char message[4] = "[2";
-    if (write(fd, message, 3) < 0) {
-        perror("Error writing to driver");
-        close(fd);
-        return;
-    }
-    close(fd);
+    int file_device;
+
+    // open device for write only
+    file_device = open(DRIVER_PATH, O_WRONLY);
+    // write message in driver
+    char start_message[4] = "[2";
+    write(file_device, start_message, 3);  // Write '[2'
+    close(file_device); // close it
 
     // waste time
+    // this loop was holding the cpu hostage, was not allowing other task to prempt based on priority
+    // I tried increasing the loop on task 2 and 3 to test premption, it was not working
+    // sched_yield fucntion is used to let other task preempt this task if required
     int i, j;
     double uno;
-    for (i = 0; i < 1000; i++) {
+    for (i = 0; i < OUTERLOOP_LONG; i++) {
         for (j = 0; j < INNERLOOP; j++) {
             sched_yield();
+            // random uno value , range from 0 to 9
             uno = (rand() % 10) * (rand() % 10) % 10; // here this value is used to wake up aperiodic task 4
         }
     }
@@ -275,20 +275,12 @@ void task2_code() { // periodic task 2
         // pthread_mutex_unlock(&mutex_task_4);
     }
 
-    // open the driver again
-    fd = open(DRIVER_PATH, O_WRONLY);
-    if (fd < 0) {
-        perror("Error opening driver");
-        return;
-    }
-    // write the end of message in driver and close it
+    // open file again
+    file_device = open(DRIVER_PATH, O_WRONLY);
+    // write the message again
     char end_message[4] = "2]";
-    if (write(fd, end_message, 3) < 0) {
-        perror("Error writing to driver");
-        close(fd);
-        return;
-    }
-    close(fd);
+    write(file_device, end_message, 3);  // Write '2]'
+    close(file_device); // Close the device
 }
 
 void *task2(void *ptr) {
@@ -311,39 +303,33 @@ void *task2(void *ptr) {
         next_arrival_time[1].tv_sec = next_arrival_time[1].tv_sec + next_arrival_nanoseconds / 1000000000;
     }
 
-    return NULL; // Explicit return for thread function
+    return NULL; 
 }
 
 void task3_code() {
-    int fd;
-    // open driver
-    fd = open(DRIVER_PATH, O_WRONLY);
-    if (fd < 0) {
-        perror("Error opening driver");
-        return;
-    }
-    // write start of message in driver and close it
-    char message[4] = "[3";
-    write(fd, message, 3);  // Write '[3'
-    close(fd);
+    int file_device;
+
+    // open device for write only
+    file_device = open(DRIVER_PATH, O_WRONLY);
+    // write message in driver
+    char start_message[4] = "[3";
+    write(file_device, start_message, 3);  // Write '[3'
+    close(file_device); // close it
 
     // waste time
     int i, j;
-    for (i = 0; i < OUTERLOOP; i++) {
-        for (j = 0; j < INNERLOOP; j++) {
-            sched_yield();
+    for (i = 0; i < OUTERLOOP_LONG; i++) { // longer loop time to see premption
+        for (j = 0; j < INNERLOOP_LONG; j++) { // longer loop time
+            sched_yield(); 
         }
     }
-    // open driver again
-    fd = open(DRIVER_PATH, O_WRONLY);
-    if (fd < 0) {
-        perror("Error opening driver");
-        return;
-    }
-    // write end of message in driver and close it
+
+    // open file again
+    file_device = open(DRIVER_PATH, O_WRONLY);
+    // write the message again
     char end_message[4] = "3]";
-    write(fd, end_message, 3);  // Write ']3'
-    close(fd);
+    write(file_device, end_message, 3);  // Write '3]'
+    close(file_device); // Close the device
 }
 
 void *task3(void *ptr) {
@@ -365,19 +351,19 @@ void *task3(void *ptr) {
         next_arrival_time[2].tv_nsec = next_arrival_nanoseconds % 1000000000;
         next_arrival_time[2].tv_sec = next_arrival_time[2].tv_sec + next_arrival_nanoseconds / 1000000000;
     }
+
+    return NULL;
 }
+
 void task4_code() {
-    int fd;
-    // open driver
-    fd = open(DRIVER_PATH, O_WRONLY);
-    if (fd < 0) {
-        perror("Error opening driver");
-        return;
-    }
-    // write start of message in driver and close it
-    char message[4] = "[4";
-    write(fd, message, 3);  // Write '[4'
-    close(fd);
+    int file_device;
+
+    // open device for write only
+    file_device = open(DRIVER_PATH, O_WRONLY);
+    // write message in driver
+    char start_message[4] = "[4";
+    write(file_device, start_message, 3);  // Write '[4'
+    close(file_device); // close it
 
     // waste time
     int i, j;
@@ -386,16 +372,14 @@ void task4_code() {
             sched_yield();
         }
     }
-    // open driver again
-    fd = open(DRIVER_PATH, O_WRONLY);
-    if (fd < 0) {
-        perror("Error opening driver");
-        return;
-    }
-    // write end of message in the driver and close it 
+
+    // open file again
+    file_device = open(DRIVER_PATH, O_WRONLY);
+    // write the message again
     char end_message[4] = "4]";
-    write(fd, end_message, 3);  // Write ']4'
-    close(fd);
+    write(file_device, end_message, 3);  // Write '4]'
+    close(file_device); // Close the device
+
 }
 
 void *task4(void *ptr) {
@@ -405,8 +389,7 @@ void *task4(void *ptr) {
     CPU_SET(0, &cset);
     pthread_setaffinity_np(pthread_self(), sizeof(cpu_set_t), &cset);
 
-    while (1) {
-        // Wait for the signal from Task 2 (J2)
+    while (1) { // running in background waiting for signal from task2 J2 to execute
         // pthread_mutex_lock(&mutex_task_4);  // Lock the mutex before waiting on the condition
         pthread_cond_wait(&cond_task_4, &mutex_task_4);  // Wait until J2 signals
         // pthread_mutex_unlock(&mutex_task_4);  // Unlock the mutex

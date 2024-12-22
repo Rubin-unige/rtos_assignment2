@@ -10,7 +10,7 @@ if [ -z "$MAJOR" ]; then
     exit 1
 fi
 
-# Specify the minor number (this can be static or passed as an argument)
+# Specify the minor number
 MINOR=0
 
 # Check if the device file already exists
@@ -19,7 +19,7 @@ if [ -e "$DEVICE_PATH" ]; then
     exit 0
 fi
 
-# Create the device file
+# Create the device file if it does not exist
 if sudo mknod "$DEVICE_PATH" c "$MAJOR" "$MINOR"; then
     sudo chmod +x "$DEVICE_PATH"
     echo "Device created at $DEVICE_PATH with major $MAJOR and minor $MINOR"
