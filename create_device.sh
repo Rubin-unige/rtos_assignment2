@@ -16,7 +16,7 @@ MINOR=0
 # Check if the device file already exists
 if [ -e "$DEVICE_PATH" ]; then
     echo "Device file '$DEVICE_PATH' already exists."
-    exit 0
+    sudo rm -f "$DEVICE_PATH"
 fi
 
 # Create the device file if it does not exist

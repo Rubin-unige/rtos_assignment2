@@ -31,16 +31,16 @@ user:
 # Install kernel module, create device file
 install:
 	# Check if the module is already loaded
-	if lsmod | grep "$(MODULE_NAME)" &> /dev/null; then \
+	if lsmod | grep -q "$(MODULE_NAME)"; then \
 		echo "Module $(MODULE_NAME) is already loaded. Removing it."; \
 		sudo rmmod $(MODULE_NAME); \
 	fi
 	# Install the kernel module
 	sudo insmod $(MODULE_NAME).ko
 	echo "Kernel module installed."
-	# Make executable
+	# Make the bash script executable
 	chmod +x $(BASH_SCRIPT)
-	# Run the bash script
+	# Run the bash script to create the device file
 	sudo ./$(BASH_SCRIPT)
 
 # Uninstall kernel module and remove the device file
