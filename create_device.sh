@@ -1,9 +1,10 @@
 #!/bin/bash
 
-DEVICE_PATH="/dev/special_device"
+DEVICE_NAME="special_device"
+DEVICE_PATH="/dev/$DEVICE_NAME"
 
 # Get the major number from /proc/devices
-MAJOR=$(grep -i "special_device" /proc/devices | awk '{print $1}')
+MAJOR=$(grep -i "$DEVICE_NAME" /proc/devices | awk '{print $1}')
 
 if [ -z "$MAJOR" ]; then
     exit 1

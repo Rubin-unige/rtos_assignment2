@@ -11,7 +11,7 @@ BASH_SCRIPT := create_device.sh
 
 # Device and module paths
 DEVICE_PATH := /dev/special_device
-MODULE_NAME := special_device_driver
+MODULE_NAME := special_device
 
 # Targets
 .PHONY: all clean kernel user install uninstall
@@ -47,6 +47,6 @@ uninstall:
 # Clean up build files and device files
 clean:
 	$(MAKE) -C $(KERNELDIR) M=$(PWD) clean
-	rm -f task_scheduler
+	sudo rm -f task_scheduler
 	# Remove kernel module binary
-	rm -f $(MODULE_NAME).ko
+	sudo rm -f $(MODULE_NAME).ko
